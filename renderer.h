@@ -83,6 +83,8 @@ class Renderer
 	VkSampler textureSampler;
 
 
+	VkDescriptorSetLayout textureDescriptorSetLayout;
+	std::vector<VkDescriptorSet> textureDescriptorSets;
 
 public:
 	Renderer(GW::SYSTEM::GWindow _win, GW::GRAPHICS::GVulkanSurface _vlk)
@@ -101,6 +103,7 @@ public:
 	}
 
 private:
+
 	void CreateDescriptorSetLayout()
 	{
 		VkDescriptorSetLayoutBinding layoutBinding{};
@@ -119,7 +122,7 @@ private:
 			throw std::runtime_error("Failed to create descriptor set layout!");
 		}
 	}
-	// 2g self 
+
 	void CreateDescriptorSet()
 	{
 		unsigned int imageCount;
@@ -138,22 +141,24 @@ private:
 			throw std::runtime_error("Failed to allocate descriptor sets!");
 		}
 	}
-	void CreateDescriptorPool()
-	{
+	// Task B2: Allocate additional room in the existing VkDescriptorPool
+	void CreateDescriptorPool() {
 		unsigned int imageCount;
 		vlk.GetSwapchainImageCount(imageCount);
-		VkDescriptorPoolSize poolSize{};
-		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount = imageCount;
+
+		std::array<VkDescriptorPoolSize, 2> poolSizes{};
+		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSizes[0].descriptorCount = static_cast<uint32_t>(imageCount);
+		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSizes[1].descriptorCount = static_cast<uint32_t>(imageCount);
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
-		poolInfo.maxSets = imageCount;
+		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+		poolInfo.pPoolSizes = poolSizes.data();
+		poolInfo.maxSets = static_cast<uint32_t>(imageCount) * 2;
 
-		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
-		{
+		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create descriptor pool!");
 		}
 	}
@@ -180,6 +185,66 @@ private:
 			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 		}
 	}
+
+	// Task B1: Create a new VkDescriptorSetLayout for texture/sampler combo
+	void CreateTextureDescriptorSetLayout() {
+		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+		samplerLayoutBinding.binding = 0;
+		samplerLayoutBinding.descriptorCount = 1;
+		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerLayoutBinding.pImmutableSamplers = nullptr;
+		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo{};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = 1;
+		layoutInfo.pBindings = &samplerLayoutBinding;
+
+		if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &textureDescriptorSetLayout) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create texture descriptor set layout!");
+		}
+	}
+	// Task B3: Create a new VkDescriptorSet for texture descriptors
+	void CreateTextureDescriptorSet() {
+		unsigned int imageCount;
+		vlk.GetSwapchainImageCount(imageCount);
+
+		std::vector<VkDescriptorSetLayout> layouts(imageCount, textureDescriptorSetLayout);
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorSetCount = imageCount;
+		allocInfo.pSetLayouts = layouts.data();
+
+		textureDescriptorSets.resize(imageCount);
+		if (vkAllocateDescriptorSets(device, &allocInfo, textureDescriptorSets.data()) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to allocate texture descriptor sets!");
+		}
+
+		for (unsigned int i = 0; i < imageCount; i++) {
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = textureImageView;
+			imageInfo.sampler = textureSampler;
+
+			VkWriteDescriptorSet descriptorWrite{};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = textureDescriptorSets[i];
+			descriptorWrite.dstBinding = 0;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pImageInfo = &imageInfo;
+
+			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+		}
+	}
+
+	// Task B4: Bind the new texture descriptor set
+	void BindTextureDescriptorSet(VkCommandBuffer& commandBuffer, uint32_t imageIndex) {
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &textureDescriptorSets[imageIndex], 0, nullptr);
+	}
+
 
 
 	void CreateUniformBuffers()
@@ -360,12 +425,17 @@ private:
 		GetHandlesFromSurface();
 		InitializeVertexBuffer();
 		
-		
 		CreateUniformBuffers();
+		
 		CreateDescriptorSetLayout();
+		CreateTextureDescriptorSetLayout();
 		CreateDescriptorPool();
 		CreateDescriptorSet();
+		CreateTextureDescriptorSet();
 		UpdateDescriptorSet();
+
+
+
 
 		CompileShaders();
 		InitializeGraphicsPipeline();
@@ -837,17 +907,18 @@ private:
 		return retval;
 	}
 
-	void CreatePipelineLayout()
-	{
+	// Task B5: Adjust VkPipelineLayout creation
+	void CreatePipelineLayout() {
+		std::array<VkDescriptorSetLayout, 2> setLayouts = { descriptorSetLayout, textureDescriptorSetLayout };
 
-		VkPipelineLayoutCreateInfo pipeline_layout_create_info = {};
-		pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipeline_layout_create_info.setLayoutCount = 1;
-		pipeline_layout_create_info.pSetLayouts = &descriptorSetLayout;
-		pipeline_layout_create_info.pushConstantRangeCount = 0;
-		pipeline_layout_create_info.pPushConstantRanges = nullptr;
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
+		pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 
-		vkCreatePipelineLayout(device, &pipeline_layout_create_info, nullptr, &pipelineLayout);
+		if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create pipeline layout!");
+		}
 	}
 
 	void BindShutdownCallback()
@@ -877,6 +948,7 @@ public:
 	
 		//UpdateDescriptorSet();
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentImageIndex], 0, nullptr);
+		BindTextureDescriptorSet(commandBuffer, currentImageIndex);
 		VkDeviceSize offsets[] = { vertexBufferOffset };
 		//VkDeviceSize vertexBufferOffset = 8; // Vertex data starts at byte offset 8 in the unified buffer
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &unifiedBufferHandle, offsets);
@@ -965,7 +1037,7 @@ private:
 		}
 
 		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-	
+		vkDestroyDescriptorSetLayout(device, textureDescriptorSetLayout, nullptr);
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 		vkDestroyShaderModule(device, vertexShader, nullptr);
 	
