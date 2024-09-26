@@ -1,16 +1,16 @@
 // minimalistic code to draw a single triangle, this is not part of the API.
 #include "shaderc/shaderc.h" // needed for compiling shaders at runtime
-#ifdef _WIN32 // must use MT platform DLL libraries on windows
-#pragma comment(lib, "shaderc_combined.lib") 
+#ifdef _WIN32				 // must use MT platform DLL libraries on windows
+#pragma comment(lib, "shaderc_combined.lib")
 #endif
 #include "Camera.h"
 #include "TextureUtils.h"
-void PrintLabeledDebugString(const char* label, const char* toPrint)
+void PrintLabeledDebugString(const char *label, const char *toPrint)
 {
 	std::cout << label << toPrint << std::endl;
 
-	//OutputDebugStringA is a windows-only function 
-#if defined WIN32 
+	// OutputDebugStringA is a windows-only function
+#if defined WIN32
 	OutputDebugStringA(label);
 	OutputDebugStringA(toPrint);
 #endif
@@ -44,9 +44,8 @@ class Renderer
 	VkDeviceSize indexBufferOffset = 0;
 	uint32_t indexCount = 0;
 	VkIndexType indexType = VK_INDEX_TYPE_UINT16;
-	tinygltf::Model model; 
-	tinygltf::TinyGLTF loader;	
-	
+	tinygltf::Model model;
+	tinygltf::TinyGLTF loader;
 
 	std::vector<VkDeviceSize> attributeOffsets;
 	std::vector<VkDeviceSize> attributeSizes;
@@ -61,7 +60,7 @@ class Renderer
 		GW::MATH::GVECTORF sunDirection;
 		GW::MATH::GVECTORF sunColor;
 		GW::MATH::GVECTORF cameraPosition;
-		//float padding[12]; // Adjust padding as needed
+		// float padding[12]; // Adjust padding as needed
 	};
 	GW::MATH::GMatrix math;
 	GW::MATH::GMATRIXF viewMatrix;
@@ -74,8 +73,7 @@ class Renderer
 	VkDescriptorSet descriptorSet;
 	std::vector<VkDescriptorSet> descriptorSets;
 
-
-	// WORK 2 
+	// WORK 2
 
 	VkBuffer textureBuffer;
 	VkDeviceMemory textureMemory;
@@ -83,11 +81,10 @@ class Renderer
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 
-
 	VkDescriptorSetLayout textureDescriptorSetLayout;
 	std::vector<VkDescriptorSet> textureDescriptorSets;
 
-	// part c 
+	// part c
 	struct TextureData
 	{
 		VkBuffer buffer;
@@ -105,7 +102,7 @@ public:
 		vlk = _vlk;
 		math.Create();
 		LoadGLTFModel("../Models/blender_fish.gltf");
-		
+
 		CreateViewMatrix();
 		CreateProjectionMatrix();
 
@@ -115,7 +112,6 @@ public:
 	}
 
 private:
-
 	void CreateDescriptorSetLayout()
 	{
 		VkDescriptorSetLayoutBinding layoutBinding{};
@@ -204,7 +200,7 @@ private:
 	{
 		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 		samplerLayoutBinding.binding = 0;
-		samplerLayoutBinding.descriptorCount = MAX_TEXTURES; 
+		samplerLayoutBinding.descriptorCount = MAX_TEXTURES;
 		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		samplerLayoutBinding.pImmutableSamplers = nullptr;
 		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -274,18 +270,18 @@ private:
 			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 		}
 	}
-	void BindTextureDescriptorSet(VkCommandBuffer& commandBuffer, uint32_t imageIndex) {
+	void BindTextureDescriptorSet(VkCommandBuffer &commandBuffer, uint32_t imageIndex)
+	{
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &textureDescriptorSets[imageIndex], 0, nullptr);
 	}
-
-
 
 	void CreateUniformBuffers()
 	{
 		VkDeviceSize bufferSize = sizeof(SHADER_VARS);
 
 		unsigned int imageCount;
-		if (vlk.GetSwapchainImageCount(imageCount) != GW::GReturn::SUCCESS) {
+		if (vlk.GetSwapchainImageCount(imageCount) != GW::GReturn::SUCCESS)
+		{
 			throw std::runtime_error("Failed to get swapchain image count");
 		}
 
@@ -295,28 +291,30 @@ private:
 		for (size_t i = 0; i < imageCount; i++)
 		{
 			if (GvkHelper::create_buffer(physicalDevice, device, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-				&uniformBuffers[i], &uniformBuffersMemory[i]) != VK_SUCCESS) {
+										 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+										 &uniformBuffers[i], &uniformBuffersMemory[i]) != VK_SUCCESS)
+			{
 				throw std::runtime_error("Failed to create uniform buffer");
 			}
 		}
 	}
 	void CreateViewMatrix()
 	{
-		GW::MATH::GVECTORF eyePosition = { 1.9f, 1.0f, -1.5f, 1.0f };
-		GW::MATH::GVECTORF lookAtPoint = { 0.0f, 0.0f, 0.0f, 1.0f };
-		GW::MATH::GVECTORF upDirection = { 0.0f, 1.0f, 0.0f, 0.0f };
+		GW::MATH::GVECTORF eyePosition = {1.9f, 1.0f, -1.5f, 1.0f};
+		GW::MATH::GVECTORF lookAtPoint = {0.0f, 0.0f, 0.0f, 1.0f};
+		GW::MATH::GVECTORF upDirection = {0.0f, 1.0f, 0.0f, 0.0f};
 
-		if (math.LookAtLHF(eyePosition, lookAtPoint, upDirection, viewMatrix) != GW::GReturn::SUCCESS) {
+		if (math.LookAtLHF(eyePosition, lookAtPoint, upDirection, viewMatrix) != GW::GReturn::SUCCESS)
+		{
 			throw std::runtime_error("Failed to create view matrix");
 		}
-
 	}
 
 #include <cmath>
 #include <corecrt_math_defines.h>
 #define _USE_MATH_DEFINES
-	void CreateProjectionMatrix() {
+	void CreateProjectionMatrix()
+	{
 		GW::MATH::GMATRIXF projectionMatrix;
 		float fov = 40.0f * (M_PI / 180.0f); //  degrees to radians
 		float nearPlane = 0.1f;
@@ -326,7 +324,8 @@ private:
 		vlk.GetAspectRatio(aspectRatio);
 
 		// DirectX-style perspective projection matrix
-		if (math.ProjectionDirectXLHF(fov, aspectRatio, nearPlane, farPlane, projectionMatrix) != GW::GReturn::SUCCESS) {
+		if (math.ProjectionDirectXLHF(fov, aspectRatio, nearPlane, farPlane, projectionMatrix) != GW::GReturn::SUCCESS)
+		{
 			throw std::runtime_error("Failed to create DirectX-style projection matrix");
 		}
 
@@ -340,11 +339,11 @@ private:
 
 		shaderVars.viewMatrix = viewMatrix;
 		shaderVars.projectionMatrix = projectionMatrix;
-		shaderVars.sunDirection = { 1.0f, -1.0f, 2.0f, 0.0f }; // Example: light coming from above
-		shaderVars.sunColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // White light
-		shaderVars.cameraPosition = { -0.5f, 0.25f, 0.5f, 1.0f }; //camera at origin
+		shaderVars.sunDirection = {1.0f, -1.0f, 2.0f, 0.0f};	// Example: light coming from above
+		shaderVars.sunColor = {1.0f, 1.0f, 1.0f, 1.0f};			// White light
+		shaderVars.cameraPosition = {-0.5f, 0.25f, 0.5f, 1.0f}; // camera at origin
 
-		void* data;
+		void *data;
 		vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(shaderVars), 0, &data);
 
 		memcpy(data, &shaderVars, sizeof(shaderVars));
@@ -354,101 +353,83 @@ private:
 		GvkHelper::write_to_buffer(device, uniformBuffersMemory[currentImage], &shaderVars, sizeof(shaderVars));
 	}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	void LoadGLTFModel(const std::string& filepath)
+	void LoadGLTFModel(const std::string &filepath)
 	{
 		std::string err;
 		std::string warn;
 
 		bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
 
-		if (!warn.empty()) {
+		if (!warn.empty())
+		{
 			std::cout << "GLTF Warning: " << warn << std::endl;
 		}
 
-		if (!err.empty()) {
+		if (!err.empty())
+		{
 			std::cout << "GLTF Error: " << err << std::endl;
 		}
 
-		if (!ret) {
+		if (!ret)
+		{
 			throw std::runtime_error("Failed to load GLTF model");
 		}
 
 		std::cout << "Loaded GLTF model with " << model.meshes.size() << " meshes" << std::endl;
 
-		const tinygltf::Mesh& mesh = model.meshes[0];
-		const tinygltf::Primitive& primitive = mesh.primitives[0]; // Assuming a single primitive
+		const tinygltf::Mesh &mesh = model.meshes[0];
+		const tinygltf::Primitive &primitive = mesh.primitives[0]; // Assuming a single primitive
 
 		// Get the index accessor and its bufferView
-		const tinygltf::Accessor& indexAccessor = model.accessors[primitive.indices];
-		const tinygltf::BufferView& indexBufferView = model.bufferViews[indexAccessor.bufferView];
-		 indexBufferOffset = indexBufferView.byteOffset;
+		const tinygltf::Accessor &indexAccessor = model.accessors[primitive.indices];
+		const tinygltf::BufferView &indexBufferView = model.bufferViews[indexAccessor.bufferView];
+		indexBufferOffset = indexBufferView.byteOffset;
 
 		// Get the vertex accessor (for POSITION) and its bufferView
 		int positionAccessorIndex = primitive.attributes.find("POSITION")->second;
-		const tinygltf::Accessor& positionAccessor = model.accessors[positionAccessorIndex];
-		const tinygltf::BufferView& vertexBufferView = model.bufferViews[positionAccessor.bufferView];
-		 vertexBufferOffset = vertexBufferView.byteOffset;
-		  indexCount = indexAccessor.count;
+		const tinygltf::Accessor &positionAccessor = model.accessors[positionAccessorIndex];
+		const tinygltf::BufferView &vertexBufferView = model.bufferViews[positionAccessor.bufferView];
+		vertexBufferOffset = vertexBufferView.byteOffset;
+		indexCount = indexAccessor.count;
 
+		// Texture loading
+		if (!model.materials.empty())
+		{
+			const tinygltf::Material &material = model.materials[0];
 
+			auto loadTextureFromMaterial = [&](const std::string &textureName)
+			{
+				auto it = material.values.find(textureName);
+				if (it != material.values.end())
+				{
+					int textureIndex = it->second.TextureIndex();
+					if (textureIndex >= 0 && textureIndex < model.textures.size())
+					{
+						const tinygltf::Texture &texture = model.textures[textureIndex];
+						int imageIndex = texture.source;
+						if (imageIndex >= 0 && imageIndex < model.images.size())
+						{
+							const tinygltf::Image &image = model.images[imageIndex];
 
-		  // Texture loading
-		  if (!model.materials.empty())
-		  {
-			  const tinygltf::Material& material = model.materials[0];
+							TextureData textureData;
+							UploadTextureToGPU(vlk, image, textureData.buffer, textureData.memory, textureData.image, textureData.imageView);
+							VkResult result = CreateSampler(vlk, textureData.sampler);
+							if (result != VK_SUCCESS)
+							{
+								throw std::runtime_error("Failed to create texture sampler!");
+							}
+							textures.push_back(textureData);
+						}
+					}
+				}
+			};
 
-			  auto loadTextureFromMaterial = [&](const std::string& textureName) {
-				  auto it = material.values.find(textureName);
-				  if (it != material.values.end())
-				  {
-					  int textureIndex = it->second.TextureIndex();
-					  if (textureIndex >= 0 && textureIndex < model.textures.size())
-					  {
-						  const tinygltf::Texture& texture = model.textures[textureIndex];
-						  int imageIndex = texture.source;
-						  if (imageIndex >= 0 && imageIndex < model.images.size())
-						  {
-							  const tinygltf::Image& image = model.images[imageIndex];
+			// Load baseColor texture
+			loadTextureFromMaterial("baseColorTexture");
 
-							  TextureData textureData;
-							  UploadTextureToGPU(vlk, image, textureData.buffer, textureData.memory, textureData.image, textureData.imageView);
-							  VkResult result = CreateSampler(vlk, textureData.sampler);
-							  if (result != VK_SUCCESS)
-							  {
-								  throw std::runtime_error("Failed to create texture sampler!");
-							  }
-							  textures.push_back(textureData);
-						  }
-					  }
-				  }
-				  };
-
-			  // Load baseColor texture
-			  loadTextureFromMaterial("baseColorTexture");
-
-			  loadTextureFromMaterial("metallicRoughnessTexture");
-		  }
+			loadTextureFromMaterial("metallicRoughnessTexture");
+		}
 	}
-
-	
-
 
 	void UpdateWindowDimensions()
 	{
@@ -460,9 +441,9 @@ private:
 	{
 		GetHandlesFromSurface();
 		InitializeVertexBuffer();
-		
+
 		CreateUniformBuffers();
-		
+
 		CreateDescriptorSetLayout();
 		CreateTextureDescriptorSetLayout();
 		CreateDescriptorPool();
@@ -470,36 +451,32 @@ private:
 		CreateTextureDescriptorSet();
 		UpdateDescriptorSet();
 
-
-
-
 		CompileShaders();
 		InitializeGraphicsPipeline();
 	}
 
 	void GetHandlesFromSurface()
 	{
-		vlk.GetDevice((void**)&device);
-		vlk.GetPhysicalDevice((void**)&physicalDevice);
-		vlk.GetRenderPass((void**)&renderPass);
+		vlk.GetDevice((void **)&device);
+		vlk.GetPhysicalDevice((void **)&physicalDevice);
+		vlk.GetRenderPass((void **)&renderPass);
 	}
 
 	void InitializeVertexBuffer()
 	{
 		float verts[] =
-		{
-			0,   0.5f,
-			0.5f, -0.5f,
-			-0.5f, -0.5f
-		};
+			{
+				0, 0.5f,
+				0.5f, -0.5f,
+				-0.5f, -0.5f};
 
 		CreateUnifiedBuffer();
 	}
 
 	void CreateUnifiedBuffer()
 	{
-		const tinygltf::Mesh& mesh = model.meshes[0];
-		const tinygltf::Primitive& primitive = mesh.primitives[0];
+		const tinygltf::Mesh &mesh = model.meshes[0];
+		const tinygltf::Primitive &primitive = mesh.primitives[0];
 
 		attributeOffsets.resize(4);
 		attributeSizes.resize(4);
@@ -508,58 +485,57 @@ private:
 		// Calculate sizes and offsets for each attribute
 		for (int i = 0; i < 4; ++i)
 		{
-			const tinygltf::Accessor& accessor = model.accessors[i];
-			const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+			const tinygltf::Accessor &accessor = model.accessors[i];
+			const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
 			attributeSizes[i] = bufferView.byteLength;
 			attributeOffsets[i] = totalBufferSize;
 			totalBufferSize += attributeSizes[i];
 		}
 
 		// Add index buffer size
-		const tinygltf::Accessor& indexAccessor = model.accessors[primitive.indices];
-		const tinygltf::BufferView& indexBufferView = model.bufferViews[indexAccessor.bufferView];
+		const tinygltf::Accessor &indexAccessor = model.accessors[primitive.indices];
+		const tinygltf::BufferView &indexBufferView = model.bufferViews[indexAccessor.bufferView];
 		VkDeviceSize indexBufferSize = indexBufferView.byteLength;
 		indexBufferOffset = totalBufferSize;
 		totalBufferSize += indexBufferSize;
 
 		// Create unified buffer
 		GvkHelper::create_buffer(physicalDevice, device, totalBufferSize,
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			&unifiedBufferHandle, &unifiedBufferData);
+								 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+								 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+								 &unifiedBufferHandle, &unifiedBufferData);
 
 		// Copy vertex data
 		for (int i = 0; i < 4; ++i)
 		{
-			const tinygltf::Accessor& accessor = model.accessors[i];
-			const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-			const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+			const tinygltf::Accessor &accessor = model.accessors[i];
+			const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
+			const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
 
-			void* data;
+			void *data;
 			vkMapMemory(device, unifiedBufferData, attributeOffsets[i], attributeSizes[i], 0, &data);
 			memcpy(data, &buffer.data[bufferView.byteOffset], attributeSizes[i]);
 			vkUnmapMemory(device, unifiedBufferData);
 		}
 
 		// Copy index data
-		void* data;
+		void *data;
 		vkMapMemory(device, unifiedBufferData, indexBufferOffset, indexBufferSize, 0, &data);
 		memcpy(data, &model.buffers[indexBufferView.buffer].data[indexBufferView.byteOffset], indexBufferSize);
 		vkUnmapMemory(device, unifiedBufferData);
 
 		indexCount = indexAccessor.count;
 
-
 		std::cout << "Total buffer size: " << totalBufferSize << std::endl;
 		for (int i = 0; i < 4; ++i)
 		{
 			std::cout << "Attribute " << i << " - Offset: " << attributeOffsets[i]
-				<< ", Size: " << attributeSizes[i] << std::endl;
+					  << ", Size: " << attributeSizes[i] << std::endl;
 		}
 		std::cout << "Index buffer - Offset: " << indexBufferOffset
-			<< ", Size: " << indexBufferSize << std::endl;
+				  << ", Size: " << indexBufferSize << std::endl;
 	}
-	//void CreateUnifiedBuffer()
+	// void CreateUnifiedBuffer()
 	//{
 	//	const tinygltf::Mesh& mesh = model.meshes[0];
 	//	const tinygltf::Primitive& primitive = mesh.primitives[0];
@@ -628,7 +604,7 @@ private:
 		return retval;
 	}
 
-	void CompileVertexShader(const shaderc_compiler_t& compiler, const shaderc_compile_options_t& options)
+	void CompileVertexShader(const shaderc_compiler_t &compiler, const shaderc_compile_options_t &options)
 	{
 		std::string vertexShaderSource = ReadFileIntoString("../VertexShader.hlsl");
 
@@ -639,17 +615,17 @@ private:
 		if (shaderc_result_get_compilation_status(result) != shaderc_compilation_status_success) // errors?
 		{
 			PrintLabeledDebugString("Vertex Shader Errors: \n", shaderc_result_get_error_message(result));
-			abort(); //Vertex shader failed to compile! 
+			abort(); // Vertex shader failed to compile!
 			return;
 		}
 
 		GvkHelper::create_shader_module(device, shaderc_result_get_length(result), // load into Vulkan
-			(char*)shaderc_result_get_bytes(result), &vertexShader);
+										(char *)shaderc_result_get_bytes(result), &vertexShader);
 
 		shaderc_result_release(result); // done
 	}
 
-	void CompileFragmentShader(const shaderc_compiler_t& compiler, const shaderc_compile_options_t& options)
+	void CompileFragmentShader(const shaderc_compiler_t &compiler, const shaderc_compile_options_t &options)
 	{
 		std::string fragmentShaderSource = ReadFileIntoString("../FragmentShader.hlsl");
 
@@ -660,44 +636,44 @@ private:
 		if (shaderc_result_get_compilation_status(result) != shaderc_compilation_status_success) // errors?
 		{
 			PrintLabeledDebugString("Fragment Shader Errors: \n", shaderc_result_get_error_message(result));
-			abort(); //Fragment shader failed to compile! 
+			abort(); // Fragment shader failed to compile!
 			return;
 		}
 
 		GvkHelper::create_shader_module(device, shaderc_result_get_length(result), // load into Vulkan
-			(char*)shaderc_result_get_bytes(result), &fragmentShader);
+										(char *)shaderc_result_get_bytes(result), &fragmentShader);
 
 		shaderc_result_release(result); // done
 	}
-	
+
 	std::vector<VkVertexInputAttributeDescription> CreateVkVertexInputAttributeDescriptions()
-{
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions(4);
+	{
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions(4);
 
-    attributeDescriptions[0].binding = 0;
-    attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[0].offset = 0;
+		attributeDescriptions[0].binding = 0;
+		attributeDescriptions[0].location = 0;
+		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[0].offset = 0;
 
-    attributeDescriptions[1].binding = 1;
-    attributeDescriptions[1].location = 1;
-    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = 0;
+		attributeDescriptions[1].binding = 1;
+		attributeDescriptions[1].location = 1;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[1].offset = 0;
 
-    attributeDescriptions[2].binding = 2;
-    attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[2].offset = 0;
+		attributeDescriptions[2].binding = 2;
+		attributeDescriptions[2].location = 2;
+		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[2].offset = 0;
 
-    attributeDescriptions[3].binding = 3;
-    attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[3].offset = 0;
+		attributeDescriptions[3].binding = 3;
+		attributeDescriptions[3].location = 3;
+		attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		attributeDescriptions[3].offset = 0;
 
-    return attributeDescriptions;
-}
+		return attributeDescriptions;
+	}
 
-	std::vector<VkVertexInputBindingDescription> CreateVkVertexInputBindingDescriptions() 
+	std::vector<VkVertexInputBindingDescription> CreateVkVertexInputBindingDescriptions()
 	{
 		std::vector<VkVertexInputBindingDescription> bindingDescriptions(4);
 
@@ -732,17 +708,14 @@ private:
 		stage_create_info[1].module = fragmentShader;
 		stage_create_info[1].pName = "main";
 
-
 		VkPipelineInputAssemblyStateCreateInfo assembly_create_info = CreateVkPipelineInputAssemblyStateCreateInfo();
 		auto vertex_binding_description = CreateVkVertexInputBindingDescriptions();
 
-
-		//vertex_binding_description.binding = 0;
-		//vertex_binding_description.stride = 3 * sizeof(float); // 3 floats for position (12 bytes)
-		//vertex_binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+		// vertex_binding_description.binding = 0;
+		// vertex_binding_description.stride = 3 * sizeof(float); // 3 floats for position (12 bytes)
+		// vertex_binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		auto attributeDescriptions = CreateVkVertexInputAttributeDescriptions();
-
 
 		/*VkVertexInputAttributeDescription vertex_attribute_descriptions[1];
 		vertex_attribute_descriptions[0].binding = 0;
@@ -762,19 +735,16 @@ private:
 		VkPipelineColorBlendStateCreateInfo color_blend_create_info = CreateVkPipelineColorBlendStateCreateInfo(&color_blend_attachment_state, 1);
 
 		VkDynamicState dynamic_states[2] =
-		{
-			// By setting these we do not need to re-create the pipeline on Resize
-			VK_DYNAMIC_STATE_VIEWPORT,
-			VK_DYNAMIC_STATE_SCISSOR
-		};
+			{
+				// By setting these we do not need to re-create the pipeline on Resize
+				VK_DYNAMIC_STATE_VIEWPORT,
+				VK_DYNAMIC_STATE_SCISSOR};
 
 		VkPipelineDynamicStateCreateInfo dynamic_create_info = CreateVkPipelineDynamicStateCreateInfo(dynamic_states, 2);
 
-
-
 		CreatePipelineLayout();
 
-		// Pipeline State... (FINALLY) 
+		// Pipeline State... (FINALLY)
 		VkGraphicsPipelineCreateInfo pipeline_create_info = {};
 		pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline_create_info.stageCount = 2;
@@ -814,10 +784,9 @@ private:
 		return retval;
 	}
 
-	
 	VkPipelineVertexInputStateCreateInfo CreateVkPipelineVertexInputStateCreateInfo(
-		VkVertexInputBindingDescription* inputBindingDescriptions, unsigned int bindingCount,
-		VkVertexInputAttributeDescription* vertexAttributeDescriptions, unsigned int attributeCount)
+		VkVertexInputBindingDescription *inputBindingDescriptions, unsigned int bindingCount,
+		VkVertexInputAttributeDescription *vertexAttributeDescriptions, unsigned int attributeCount)
 	{
 		VkPipelineVertexInputStateCreateInfo retval = {};
 		retval.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -850,7 +819,7 @@ private:
 		return retval;
 	}
 
-	VkPipelineViewportStateCreateInfo CreateVkPipelineViewportStateCreateInfo(VkViewport* viewports, unsigned int viewportCount, VkRect2D* scissors, unsigned int scissorCount)
+	VkPipelineViewportStateCreateInfo CreateVkPipelineViewportStateCreateInfo(VkViewport *viewports, unsigned int viewportCount, VkRect2D *scissors, unsigned int scissorCount)
 	{
 		VkPipelineViewportStateCreateInfo retval = {};
 		retval.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -869,8 +838,8 @@ private:
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
-		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;  // Enable back-face culling
-		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;  // Set to counter-clockwise
+		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 		rasterizer.depthBiasConstantFactor = 0.0f;
 		rasterizer.depthBiasClamp = 0.0f;
@@ -919,7 +888,7 @@ private:
 		return retval;
 	}
 
-	VkPipelineColorBlendStateCreateInfo CreateVkPipelineColorBlendStateCreateInfo(VkPipelineColorBlendAttachmentState* attachments, unsigned int attachmentCount)
+	VkPipelineColorBlendStateCreateInfo CreateVkPipelineColorBlendStateCreateInfo(VkPipelineColorBlendAttachmentState *attachments, unsigned int attachmentCount)
 	{
 		VkPipelineColorBlendStateCreateInfo retval = {};
 		retval.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -934,7 +903,7 @@ private:
 		return retval;
 	}
 
-	VkPipelineDynamicStateCreateInfo CreateVkPipelineDynamicStateCreateInfo(VkDynamicState* dynamicStates, unsigned int dynamicStateCount)
+	VkPipelineDynamicStateCreateInfo CreateVkPipelineDynamicStateCreateInfo(VkDynamicState *dynamicStates, unsigned int dynamicStateCount)
 	{
 		VkPipelineDynamicStateCreateInfo retval = {};
 		retval.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -944,29 +913,29 @@ private:
 	}
 
 	// Task B5: Adjust VkPipelineLayout creation
-	void CreatePipelineLayout() {
-		std::array<VkDescriptorSetLayout, 2> setLayouts = { descriptorSetLayout, textureDescriptorSetLayout };
+	void CreatePipelineLayout()
+	{
+		std::array<VkDescriptorSetLayout, 2> setLayouts = {descriptorSetLayout, textureDescriptorSetLayout};
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 		pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 
-		if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+		{
 			throw std::runtime_error("Failed to create pipeline layout!");
 		}
 	}
 
 	void BindShutdownCallback()
 	{
-		// GVulkanSurface will inform us when to release any allocated resources
-		shutdown.Create(vlk, [&]() {
+		shutdown.Create(vlk, [&]()
+						{
 			if (+shutdown.Find(GW::GRAPHICS::GVulkanSurface::Events::RELEASE_RESOURCES, true)) {
 				CleanUp(); // unlike D3D we must be careful about destroy timing
-			}
-			});
+			} });
 	}
-
 
 public:
 	void Render()
@@ -975,34 +944,33 @@ public:
 		SetUpPipeline(commandBuffer);
 
 		uint32_t currentImageIndex;
-		if (vlk.GetSwapchainCurrentImage(currentImageIndex) != GW::GReturn::SUCCESS) {
+		if (vlk.GetSwapchainCurrentImage(currentImageIndex) != GW::GReturn::SUCCESS)
+		{
 			throw std::runtime_error("Failed to get current swapchain image index");
 		}
 
-		viewMatrix = FreeLookCamera(win, viewMatrix); 
+		viewMatrix = FreeLookCamera(win, viewMatrix);
 		UpdateUniformBuffer(currentImageIndex);
-	
-		//UpdateDescriptorSet();
+
+		// UpdateDescriptorSet();
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentImageIndex], 0, nullptr);
 		BindTextureDescriptorSet(commandBuffer, currentImageIndex);
-		VkDeviceSize offsets[] = { vertexBufferOffset };
-		//VkDeviceSize vertexBufferOffset = 8; // Vertex data starts at byte offset 8 in the unified buffer
+		VkDeviceSize offsets[] = {vertexBufferOffset};
+		// VkDeviceSize vertexBufferOffset = 8; // Vertex data starts at byte offset 8 in the unified buffer
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &unifiedBufferHandle, offsets);
 
 		// Bind the unified buffer as index buffer
-		//VkDeviceSize indexBufferOffset = 0; // Index data starts at byte offset 0 in the unified buffer
+		// VkDeviceSize indexBufferOffset = 0; // Index data starts at byte offset 0 in the unified buffer
 		vkCmdBindIndexBuffer(commandBuffer, unifiedBufferHandle, indexBufferOffset, VK_INDEX_TYPE_UINT16);
 
 		// Use vkCmdDrawIndexed to draw the mesh
-		 
-		//std::cout << indexCount << "    " << indexBufferOffset <<	vertexBufferOffset	<<  std::endl;
 
+		// std::cout << indexCount << "    " << indexBufferOffset <<	vertexBufferOffset	<<  std::endl;
 
-		//uint32_t indexCount = 3; // Number of indices from GLTF accessor
+		// uint32_t indexCount = 3; // Number of indices from GLTF accessor
 		vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
-		//vkCmdDraw(commandBuffer, 3, 1, 0, 0); 
+		// vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 	}
-
 
 private:
 	VkCommandBuffer GetCurrentCommandBuffer()
@@ -1011,11 +979,11 @@ private:
 		vlk.GetSwapchainCurrentImage(currentBuffer);
 
 		VkCommandBuffer commandBuffer;
-		vlk.GetCommandBuffer(currentBuffer, (void**)&commandBuffer);
+		vlk.GetCommandBuffer(currentBuffer, (void **)&commandBuffer);
 		return commandBuffer;
 	}
 
-	void SetUpPipeline(VkCommandBuffer& commandBuffer)
+	void SetUpPipeline(VkCommandBuffer &commandBuffer)
 	{
 		UpdateWindowDimensions();
 		SetViewport(commandBuffer);
@@ -1024,13 +992,13 @@ private:
 		BindVertexBuffers(commandBuffer);
 	}
 
-	void SetViewport(const VkCommandBuffer& commandBuffer)
+	void SetViewport(const VkCommandBuffer &commandBuffer)
 	{
 		VkViewport viewport = CreateViewportFromWindowDimensions();
 		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 	}
 
-	void SetScissor(const VkCommandBuffer& commandBuffer)
+	void SetScissor(const VkCommandBuffer &commandBuffer)
 	{
 		VkRect2D scissor = CreateScissorFromWindowDimensions();
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
@@ -1042,13 +1010,13 @@ private:
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &unifiedBufferHandle, offsets);
 	}*/
 
-	void BindVertexBuffers(VkCommandBuffer& commandBuffer)
+	void BindVertexBuffers(VkCommandBuffer &commandBuffer)
 	{
 		std::vector<VkBuffer> buffers(4, unifiedBufferHandle);
 		vkCmdBindVertexBuffers(commandBuffer, 0, 4, buffers.data(), attributeOffsets.data());
 	}
 
-	//Cleanup callback function (passed to VKSurface, will be called when the pipeline shuts down)
+	// Cleanup callback function (passed to VKSurface, will be called when the pipeline shuts down)
 	void CleanUp()
 	{
 		// wait till everything has completed
@@ -1058,8 +1026,8 @@ private:
 		vkDestroyBuffer(device, unifiedBufferHandle, nullptr);
 		vkFreeMemory(device, unifiedBufferData, nullptr);
 
-		// release textures 
-		for (auto& texture : textures)
+		// release textures
+		for (auto &texture : textures)
 		{
 			vkDestroySampler(device, texture.sampler, nullptr);
 			vkDestroyImageView(device, texture.imageView, nullptr);
@@ -1078,12 +1046,9 @@ private:
 		vkDestroyDescriptorSetLayout(device, textureDescriptorSetLayout, nullptr);
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 		vkDestroyShaderModule(device, vertexShader, nullptr);
-	
+
 		vkDestroyShaderModule(device, fragmentShader, nullptr);
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroyPipeline(device, pipeline, nullptr);
-
-
-
 	}
 };
