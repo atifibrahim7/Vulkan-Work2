@@ -26,7 +26,6 @@ class Renderer
 	VkRenderPass renderPass;
 	GW::CORE::GEventReceiver shutdown;
 
-	// what we need at a minimum to draw a triangle
 	VkDevice device = nullptr;
 	VkPhysicalDevice physicalDevice = nullptr;
 
@@ -105,7 +104,7 @@ public:
 		win = _win;
 		vlk = _vlk;
 		math.Create();
-		LoadGLTFModel("../Models/blender_bebe.gltf");
+		LoadGLTFModel("../Models/blender_fish.gltf");
 		
 		CreateViewMatrix();
 		CreateProjectionMatrix();
@@ -154,7 +153,6 @@ private:
 			throw std::runtime_error("Failed to allocate descriptor sets!");
 		}
 	}
-	// Task B2: Allocate additional room in the existing VkDescriptorPool
 	void CreateDescriptorPool()
 	{
 		unsigned int imageCount;
@@ -202,12 +200,11 @@ private:
 		}
 	}
 
-	// Task B1: Create a new VkDescriptorSetLayout for texture/sampler combo
 	void CreateTextureDescriptorSetLayout()
 	{
 		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 		samplerLayoutBinding.binding = 0;
-		samplerLayoutBinding.descriptorCount = MAX_TEXTURES; // Use the maximum number of textures
+		samplerLayoutBinding.descriptorCount = MAX_TEXTURES; 
 		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		samplerLayoutBinding.pImmutableSamplers = nullptr;
 		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -229,7 +226,6 @@ private:
 			throw std::runtime_error("Failed to create texture descriptor set layout!");
 		}
 	}
-	// Task B3: Create a new VkDescriptorSet for texture descriptors
 	void CreateTextureDescriptorSet()
 	{
 		unsigned int imageCount;
@@ -278,7 +274,6 @@ private:
 			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 		}
 	}
-	// Task B4: Bind the new texture descriptor set
 	void BindTextureDescriptorSet(VkCommandBuffer& commandBuffer, uint32_t imageIndex) {
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &textureDescriptorSets[imageIndex], 0, nullptr);
 	}
@@ -312,7 +307,6 @@ private:
 		GW::MATH::GVECTORF lookAtPoint = { 0.0f, 0.0f, 0.0f, 1.0f };
 		GW::MATH::GVECTORF upDirection = { 0.0f, 1.0f, 0.0f, 0.0f };
 
-		// Use LookAtLHF to create the view matrix
 		if (math.LookAtLHF(eyePosition, lookAtPoint, upDirection, viewMatrix) != GW::GReturn::SUCCESS) {
 			throw std::runtime_error("Failed to create view matrix");
 		}
@@ -324,7 +318,7 @@ private:
 #define _USE_MATH_DEFINES
 	void CreateProjectionMatrix() {
 		GW::MATH::GMATRIXF projectionMatrix;
-		float fov = 60.0f * (M_PI / 180.0f); //  degrees to radians
+		float fov = 40.0f * (M_PI / 180.0f); //  degrees to radians
 		float nearPlane = 0.1f;
 		float farPlane = 100.0f;
 
@@ -348,7 +342,7 @@ private:
 		shaderVars.projectionMatrix = projectionMatrix;
 		shaderVars.sunDirection = { 1.0f, -1.0f, 2.0f, 0.0f }; // Example: light coming from above
 		shaderVars.sunColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // White light
-		shaderVars.cameraPosition = { -0.5f, 0.25f, 0.5f, 1.0f }; // Example: camera at origin
+		shaderVars.cameraPosition = { -0.5f, 0.25f, 0.5f, 1.0f }; //camera at origin
 
 		void* data;
 		vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(shaderVars), 0, &data);
@@ -449,7 +443,6 @@ private:
 			  // Load baseColor texture
 			  loadTextureFromMaterial("baseColorTexture");
 
-			  // Task C3: Load metallicRoughness texture
 			  loadTextureFromMaterial("metallicRoughnessTexture");
 		  }
 	}

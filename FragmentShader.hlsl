@@ -21,8 +21,9 @@ cbuffer UboView : register(b0, space0)
     SHADER_VARS ubo;
 }
 
-Texture2D baseColorTexture : register(t0, space1);
-SamplerState baseColorSampler : register(s0, space1);
+
+Texture2D textures[] : register(t0, space1); // Assuming [0] is base color, [1] is roughness map
+SamplerState samplers[] : register(s0, space1);
 
 static float4 specular = float4(1, 1, 1, 1);
 static float4 ambient = float4(0.1f, 0.1f, 0.1f, 1);
@@ -36,16 +37,18 @@ float4 main(PSInput input) : SV_TARGET
     float3 V = normalize(ubo.cameraPosition.xyz - input.worldPos);
     float3 H = normalize(L + V);
 
-    // Sample the base color texture
-    float4 diffuse = baseColorTexture.Sample(baseColorSampler, input.uv);
+    float4 diffuse = textures[0].Sample(samplers[0], input.uv);
+
+    float roughness = textures[1].Sample(samplers[0], input.uv).r;
 
     float4 finalColor = ambient + emissive;
     float NdotL = max(dot(N, L), 0);
     finalColor += diffuse * ubo.sunColor * NdotL;
 
     float NdotH = max(dot(N, H), 0);
-    float4 specularTerm = specular * ubo.sunColor * pow(NdotH, Ns);
-    finalColor += specularTerm;
+    float specularTerm = pow(NdotH, Ns * (1.0f - roughness));
+    finalColor += specular * ubo.sunColor * specularTerm;
 
     return finalColor;
 }
+    
