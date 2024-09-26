@@ -49,11 +49,11 @@ int main()
 		const char *debugLayers[] = {
 			"VK_LAYER_KHRONOS_validation", // standard validation layer
 		};
-		if (+vulkan.Create(win, GW::GRAPHICS::DEPTH_BUFFER_SUPPORT,
+		if (+vulkan.Create(win, GW::GRAPHICS::DEPTH_BUFFER_SUPPORT | GW::GRAPHICS::BINDLESS_SUPPORT,
 						   sizeof(debugLayers) / sizeof(debugLayers[0]),
 						   debugLayers, 0, nullptr, 0, nullptr, false))
 #else
-		if (+vulkan.Create(win, GW::GRAPHICS::DEPTH_BUFFER_SUPPORT))
+		if (+vulkan.Create(win, GW::GRAPHICS::DEPTH_BUFFER_SUPPORT | GW::GRAPHICS::BINDLESS_SUPPORT))
 #endif
 		{
 			Renderer renderer(win, vulkan);

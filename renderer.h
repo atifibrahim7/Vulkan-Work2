@@ -18,6 +18,8 @@ void PrintLabeledDebugString(const char* label, const char* toPrint)
 
 class Renderer
 {
+	static const uint32_t MAX_TEXTURES = 16; // Or any other reasonable maximum
+
 	// proxy handles
 	GW::SYSTEM::GWindow win;
 	GW::GRAPHICS::GVulkanSurface vlk;
@@ -86,6 +88,17 @@ class Renderer
 	VkDescriptorSetLayout textureDescriptorSetLayout;
 	std::vector<VkDescriptorSet> textureDescriptorSets;
 
+	// part c 
+	struct TextureData
+	{
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		VkImage image;
+		VkImageView imageView;
+		VkSampler sampler;
+	};
+	std::vector<TextureData> textures;
+
 public:
 	Renderer(GW::SYSTEM::GWindow _win, GW::GRAPHICS::GVulkanSurface _vlk)
 	{
@@ -142,7 +155,8 @@ private:
 		}
 	}
 	// Task B2: Allocate additional room in the existing VkDescriptorPool
-	void CreateDescriptorPool() {
+	void CreateDescriptorPool()
+	{
 		unsigned int imageCount;
 		vlk.GetSwapchainImageCount(imageCount);
 
@@ -150,7 +164,7 @@ private:
 		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		poolSizes[0].descriptorCount = static_cast<uint32_t>(imageCount);
 		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSizes[1].descriptorCount = static_cast<uint32_t>(imageCount);
+		poolSizes[1].descriptorCount = static_cast<uint32_t>(imageCount * MAX_TEXTURES);
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -158,10 +172,12 @@ private:
 		poolInfo.pPoolSizes = poolSizes.data();
 		poolInfo.maxSets = static_cast<uint32_t>(imageCount) * 2;
 
-		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+		{
 			throw std::runtime_error("Failed to create descriptor pool!");
 		}
 	}
+
 	void UpdateDescriptorSet()
 	{
 		unsigned int imageCount;
@@ -187,25 +203,35 @@ private:
 	}
 
 	// Task B1: Create a new VkDescriptorSetLayout for texture/sampler combo
-	void CreateTextureDescriptorSetLayout() {
+	void CreateTextureDescriptorSetLayout()
+	{
 		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 		samplerLayoutBinding.binding = 0;
-		samplerLayoutBinding.descriptorCount = 1;
+		samplerLayoutBinding.descriptorCount = MAX_TEXTURES; // Use the maximum number of textures
 		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		samplerLayoutBinding.pImmutableSamplers = nullptr;
 		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlags{};
+		bindingFlags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+		bindingFlags.bindingCount = 1;
+		VkDescriptorBindingFlagsEXT flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT;
+		bindingFlags.pBindingFlags = &flags;
 
 		VkDescriptorSetLayoutCreateInfo layoutInfo{};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layoutInfo.bindingCount = 1;
 		layoutInfo.pBindings = &samplerLayoutBinding;
+		layoutInfo.pNext = &bindingFlags;
 
-		if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &textureDescriptorSetLayout) != VK_SUCCESS) {
+		if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &textureDescriptorSetLayout) != VK_SUCCESS)
+		{
 			throw std::runtime_error("Failed to create texture descriptor set layout!");
 		}
 	}
 	// Task B3: Create a new VkDescriptorSet for texture descriptors
-	void CreateTextureDescriptorSet() {
+	void CreateTextureDescriptorSet()
+	{
 		unsigned int imageCount;
 		vlk.GetSwapchainImageCount(imageCount);
 
@@ -216,16 +242,29 @@ private:
 		allocInfo.descriptorSetCount = imageCount;
 		allocInfo.pSetLayouts = layouts.data();
 
+		VkDescriptorSetVariableDescriptorCountAllocateInfoEXT variableCountInfo{};
+		variableCountInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+		std::vector<uint32_t> descriptorCounts(imageCount, static_cast<uint32_t>(textures.size()));
+		variableCountInfo.descriptorSetCount = imageCount;
+		variableCountInfo.pDescriptorCounts = descriptorCounts.data();
+
+		allocInfo.pNext = &variableCountInfo;
+
 		textureDescriptorSets.resize(imageCount);
-		if (vkAllocateDescriptorSets(device, &allocInfo, textureDescriptorSets.data()) != VK_SUCCESS) {
+		if (vkAllocateDescriptorSets(device, &allocInfo, textureDescriptorSets.data()) != VK_SUCCESS)
+		{
 			throw std::runtime_error("Failed to allocate texture descriptor sets!");
 		}
 
-		for (unsigned int i = 0; i < imageCount; i++) {
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = textureImageView;
-			imageInfo.sampler = textureSampler;
+		for (unsigned int i = 0; i < imageCount; i++)
+		{
+			std::vector<VkDescriptorImageInfo> imageInfos(textures.size());
+			for (size_t j = 0; j < textures.size(); j++)
+			{
+				imageInfos[j].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfos[j].imageView = textures[j].imageView;
+				imageInfos[j].sampler = textures[j].sampler;
+			}
 
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -233,13 +272,12 @@ private:
 			descriptorWrite.dstBinding = 0;
 			descriptorWrite.dstArrayElement = 0;
 			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pImageInfo = &imageInfo;
+			descriptorWrite.descriptorCount = static_cast<uint32_t>(textures.size());
+			descriptorWrite.pImageInfo = imageInfos.data();
 
 			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 		}
 	}
-
 	// Task B4: Bind the new texture descriptor set
 	void BindTextureDescriptorSet(VkCommandBuffer& commandBuffer, uint32_t imageIndex) {
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &textureDescriptorSets[imageIndex], 0, nullptr);
@@ -378,40 +416,45 @@ private:
 
 
 		  // Texture loading
-		  if (!model.materials.empty()) {
+		  if (!model.materials.empty())
+		  {
 			  const tinygltf::Material& material = model.materials[0];
 
-			  // Check if the material has any textures (for example, a base color texture)
-			  auto it = material.values.find("baseColorTexture");
-			  if (it != material.values.end()) {
-				  int textureIndex = it->second.TextureIndex();
+			  auto loadTextureFromMaterial = [&](const std::string& textureName) {
+				  auto it = material.values.find(textureName);
+				  if (it != material.values.end())
+				  {
+					  int textureIndex = it->second.TextureIndex();
+					  if (textureIndex >= 0 && textureIndex < model.textures.size())
+					  {
+						  const tinygltf::Texture& texture = model.textures[textureIndex];
+						  int imageIndex = texture.source;
+						  if (imageIndex >= 0 && imageIndex < model.images.size())
+						  {
+							  const tinygltf::Image& image = model.images[imageIndex];
 
-				  // Access the texture and corresponding image
-				  if (textureIndex >= 0 && textureIndex < model.textures.size()) {
-					  const tinygltf::Texture& texture = model.textures[textureIndex];
-					  int imageIndex = texture.source;
-					  if (imageIndex >= 0 && imageIndex < model.images.size()) {
-						  const tinygltf::Image& image = model.images[imageIndex];
-
-						  // Upload the texture to the GPU
-						  UploadTextureToGPU(vlk, image, textureBuffer, textureMemory, textureImage, textureImageView);
-						  // Create the texture sampler
-						  VkResult result = CreateSampler(vlk, textureSampler);
-						  if (result != VK_SUCCESS) {
-							  // Handle error if sampler creation fails
-							  throw std::runtime_error("Failed to create texture sampler!");
+							  TextureData textureData;
+							  UploadTextureToGPU(vlk, image, textureData.buffer, textureData.memory, textureData.image, textureData.imageView);
+							  VkResult result = CreateSampler(vlk, textureData.sampler);
+							  if (result != VK_SUCCESS)
+							  {
+								  throw std::runtime_error("Failed to create texture sampler!");
+							  }
+							  textures.push_back(textureData);
 						  }
-
-						  // Now textureBuffer, textureMemory, textureImage, textureImageView, and textureSampler
-						  // contain the texture data for the first material and can be used in rendering.
 					  }
 				  }
-			  }
-		  }
+				  };
 
+			  // Load baseColor texture
+			  loadTextureFromMaterial("baseColorTexture");
+
+			  // Task C3: Load metallicRoughness texture
+			  loadTextureFromMaterial("metallicRoughnessTexture");
+		  }
 	}
 
-
+	
 
 
 	void UpdateWindowDimensions()
@@ -1023,12 +1066,14 @@ private:
 		vkFreeMemory(device, unifiedBufferData, nullptr);
 
 		// release textures 
-		vkDestroySampler(device, textureSampler, nullptr);
-		vkDestroyImageView(device, textureImageView, nullptr);
-		vkDestroyImage(device, textureImage, nullptr);
-		vkFreeMemory(device, textureMemory, nullptr);
-		vkDestroyBuffer(device, textureBuffer, nullptr);
-
+		for (auto& texture : textures)
+		{
+			vkDestroySampler(device, texture.sampler, nullptr);
+			vkDestroyImageView(device, texture.imageView, nullptr);
+			vkDestroyImage(device, texture.image, nullptr);
+			vkFreeMemory(device, texture.memory, nullptr);
+			vkDestroyBuffer(device, texture.buffer, nullptr);
+		}
 
 		for (size_t i = 0; i < uniformBuffers.size(); i++)
 		{
